@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление манипулятором</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        h1, h2 {
+            color: #007BFF;
+        }
+        .control-panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 45%;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input[type="number"], input[type="file"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .joystick {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #007BFF;
+            border-radius: 50%;
+            position: relative;
+            margin: 10px;
+            display: inline-block;
+            background-color: #e9ecef;
+        }
+        .stick {
+            width: 30px;
+            height: 30px;
+            background: #007BFF;
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .stick:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h1>Управление манипулятором</h1>
+        
+        <!-- <h2>Загрузка изображения</h2>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="image" accept="image/*">
+            <input type="submit" value="Загрузить изображение">
+        </form> -->
+
+        <h2>Управление сервоприводами</h2>
+        <form id="servoControl">
+            <label for="servo1">Сервопривод 1 (угол):</label>
+            <input type="number" id="servo1" name="servo1" min="0" max="180">
+            <label for="servo2">Сервопривод 2 (угол):</label>
+            <input type="number" id="servo2" name="servo2" min="0" max="180">
+            <label for="servo3">Сервопривод 3 (угол):</label>
+            <input type="number" id="servo3" name="servo3" min="0" max="180">
+            <label for="servo4">Сервопривод 4 (угол):</label>
+            <input type="number" id="servo4" name="servo4" min="0" max="180">
+            <label for="servo5">Сервопривод 5 (угол):</label>
+            <input type="number" id="servo5" name="servo5" min="0" max="180">
+            <button type="button" onclick="sendControl()">Отправить</button>
+            <button type="button" onclick="saveTemplate()">Записать шаблон управления</button>
+        </form>
+    </div>
+
+    <div class="control-panel">
+        <h2>Управление с помощью джойстиков</h2>
+        <div class="joystick" id="joystick1">
+            <div class="stick" id="stick1" draggable="true"></div>
+        </div>
+        <div class="joystick" id="joystick2">
+            <div class="stick" id="stick2" draggable="true"></div>
+        </div>
+        <div class="joystick" id="joystick3">
+            <div class="stick" id="stick3" draggable="true"></div>
+        </div>
+    </div>
+
+    <script>
+        function sendControl() {
+            const servoValues = {
+                servo1: document.getElementById('servo1').value,
+                servo2: document.getElementById('servo2').value,
+                servo3: document.getElementById('servo3').value,
+                servo4: document.getElementById('servo4').value,
+                servo5: document.getElementById('servo5').value
+            };
+
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(servoValues)
+            })
+            .then(response => response.text())
+            .then(data => alert(data))
+            .catch(error => console.error('Ошибка:', error));
+        }
+
+        function saveTemplate() {
+            const servoValues = {
+                servo1: document.getElementById('servo1').value,
+                servo2: document.getElementById('servo2').value,
+                servo3: document.getElementById('servo3').value,
+                servo4: document.getElementById('servo4').value,
+                servo5: document.getElementById('servo5').value
+            };
+
+            fetch('/save_template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(servoValues)
+            })
+            .then(response => response.text())
+            .then(data => alert(data))
+            .catch(error => console.error('Ошибка:', error));
+        }
+
+        function updateServoFromJoystick(joystickId, servoIndex) {
+            const stick = document.getElementById(joystickId);
+            const rect = stick.getBoundingClientRect();
+            const offsetX = event.clientX - rect.left - (stick.offsetWidth / 2);
+            const offsetY = event.clientY - rect.top - (stick.offsetHeight / 2);
+            const angle = Math.atan2(offsetY, offsetX) * (180 / Math.PI) + 180; // Преобразование в угол
+
+            document.getElementById(`servo${servoIndex}`).value = Math.min(Math.max(Math.round(angle), 0), 180);
+            sendControl();
+        }
+
+        document.querySelectorAll('.stick').forEach((stick, index) => {
+            stick.addEventListener('drag', (event) => {
+                updateServoFromJoystick(`joystick${index + 1}`, index + 1);
+            });
+        });
+    </script>
+</body>
+</html>
