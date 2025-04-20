@@ -1,0 +1,41 @@
+body {
+    background-image: url('https://img.freepik.com/free-photo/robot-hand-side-view-background-presenting-technology-gesture_53876-129764.jpg?t=st=1745167644~exp=1745171244~hmac=25f6e9f71ca7bc5f7333dfa98a510a5f4737a4a1e22a741b94117823222608f7&w=1380'); /* путь к изображению */
+    background-size: cover; 
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+form div {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 94%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
