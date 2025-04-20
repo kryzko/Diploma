@@ -72,6 +72,10 @@
         .stick:hover {
             background: #0056b3;
         }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -87,17 +91,18 @@
         <h2>Управление сервоприводами</h2>
         <form id="servoControl">
             <label for="servo1">Сервопривод 1 (угол):</label>
-            <input type="number" id="servo1" name="servo1" min="0" max="180">
+            <input type="number" id="servo1" name="servo1" min="0" max="360">
             <label for="servo2">Сервопривод 2 (угол):</label>
-            <input type="number" id="servo2" name="servo2" min="0" max="180">
+            <input type="number" id="servo2" name="servo2" min="0" max="360">
             <label for="servo3">Сервопривод 3 (угол):</label>
-            <input type="number" id="servo3" name="servo3" min="0" max="180">
+            <input type="number" id="servo3" name="servo3" min="0" max="360">
             <label for="servo4">Сервопривод 4 (угол):</label>
-            <input type="number" id="servo4" name="servo4" min="0" max="180">
+            <input type="number" id="servo4" name="servo4" min="0" max="360">
             <label for="servo5">Сервопривод 5 (угол):</label>
-            <input type="number" id="servo5" name="servo5" min="0" max="180">
+            <input type="number" id="servo5" name="servo5" min="0" max="360">
             <button type="button" onclick="sendControl()">Отправить</button>
             <button type="button" onclick="saveTemplate()">Записать шаблон управления</button>
+            <div class="error" id="error-message" style="display: none;"></div>
         </form>
     </div>
 
@@ -115,7 +120,31 @@
     </div>
 
     <script>
+        function validateInputs() {
+            const servoValues = [
+                document.getElementById('servo1').value,
+                document.getElementById('servo2').value,
+                document.getElementById('servo3').value,
+                document.getElementById('servo4').value,
+                document.getElementById('servo5').value
+            ];
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.style.display = 'none'; // Скрыть сообщение об ошибке
+
+            for (let i = 0; i < servoValues.length; i++) {
+                const value = parseInt(servoValues[i], 10);
+                if (value < 0 || value > 360) {
+                    errorMessage.innerText = `Ошибка: Угол для сервопривода ${i + 1} должен быть в диапазоне от 0 до 360 градусов.`;
+                    errorMessage.style.display = 'block';
+                    return false; // Возвращаем false, если есть ошибка
+                }
+            }
+            return true; // Все значения корректны
+        }
+
         function sendControl() {
+            if (!validateInputs()) return; // Проверка значений перед отправкой
+
             const servoValues = {
                 servo1: document.getElementById('servo1').value,
                 servo2: document.getElementById('servo2').value,
@@ -137,6 +166,8 @@
         }
 
         function saveTemplate() {
+            if (!validateInputs()) return; // Проверка значений перед сохранением шаблона
+
             const servoValues = {
                 servo1: document.getElementById('servo1').value,
                 servo2: document.getElementById('servo2').value,
@@ -164,7 +195,7 @@
             const offsetY = event.clientY - rect.top - (stick.offsetHeight / 2);
             const angle = Math.atan2(offsetY, offsetX) * (180 / Math.PI) + 180; // Преобразование в угол
 
-            document.getElementById(`servo${servoIndex}`).value = Math.min(Math.max(Math.round(angle), 0), 180);
+            document.getElementById(`servo${servoIndex}`).value = Math.min(Math.max(Math.round(angle), 0), 360);
             sendControl();
         }
 
