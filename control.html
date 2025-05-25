@@ -1,209 +1,267 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление манипулятором</title>
+    <title>Управление серво и шаговым двигателем</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
-            margin: 0;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
-            display: flex;
-            justify-content: space-between;
-        }
-        h1, h2 {
-            color: #007BFF;
         }
         .control-panel {
-            background: #fff;
+            background: #f5f5f5;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            width: 45%;
+            margin-bottom: 20px;
         }
-        label {
-            display: block;
-            margin: 10px 0 5px;
+        .slider-container {
+            margin: 20px 0;
         }
-        input[type="number"], input[type="file"] {
-            width: calc(100% - 20px);
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 10px;
+        .slider {
+            width: 100%;
+        }
+        .value-display {
+            text-align: center;
+            font-size: 24px;
+            margin: 10px 0;
         }
         button {
-            background-color: #007BFF;
-            color: white;
-            border: none;
             padding: 10px 15px;
-            border-radius: 4px;
+            margin-right: 10px;
             cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 10px;
         }
-        button:hover {
-            background-color: #0056b3;
+        #messages {
+            margin-top: 20px;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
         }
-        .joystick {
-            width: 100px;
-            height: 100px;
-            border: 2px solid #007BFF;
-            border-radius: 50%;
-            position: relative;
-            margin: 10px;
-            display: inline-block;
-            background-color: #e9ecef;
+        .motor-control {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
         }
-        .stick {
-            width: 30px;
-            height: 30px;
-            background: #007BFF;
-            border-radius: 50%;
-            position: absolute;
-            top: 35px;
-            left: 35px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .stick:hover {
-            background: #0056b3;
-        }
-        .error {
-            color: red;
-            margin-top: 10px;
+        .direction-btn {
+            width: 48%;
         }
     </style>
 </head>
 <body>
     <div class="control-panel">
-        <h1>Управление манипулятором</h1>
-        
-        <!-- <h2>Загрузка изображения</h2>
-        <form action="/upload" method="post" enctype="multipart/form-data">
-            <input type="file" name="image" accept="image/*">
-            <input type="submit" value="Загрузить изображение">
-        </form> -->
-
-        <h2>Управление сервоприводами</h2>
-        <form id="servoControl">
-            <label for="servo1">Сервопривод 1 (угол):</label>
-            <input type="number" id="servo1" name="servo1" min="0" max="360">
-            <label for="servo2">Сервопривод 2 (угол):</label>
-            <input type="number" id="servo2" name="servo2" min="0" max="360">
-            <label for="servo3">Сервопривод 3 (угол):</label>
-            <input type="number" id="servo3" name="servo3" min="0" max="360">
-            <label for="servo4">Сервопривод 4 (угол):</label>
-            <input type="number" id="servo4" name="servo4" min="0" max="360">
-            <label for="servo5">Сервопривод 5 (угол):</label>
-            <input type="number" id="servo5" name="servo5" min="0" max="360">
-            <button type="button" onclick="sendControl()">Отправить</button>
-            <button type="button" onclick="saveTemplate()">Записать шаблон управления</button>
-            <div class="error" id="error-message" style="display: none;"></div>
-        </form>
+        <h1>Управление сервоприводом</h1>
+        <div class="slider-container">
+            <label for="servoSlider">Положение сервопривода (0-180°):</label>
+            <input type="range" id="servoSlider" class="slider" min="0" max="180" value="90">
+            <div class="value-display" id="servoValue">90°</div>
+        </div>
     </div>
 
     <div class="control-panel">
-        <h2>Управление с помощью джойстиков</h2>
-        <div class="joystick" id="joystick1">
-            <div class="stick" id="stick1" draggable="true"></div>
+        <h1>Управление шаговыми двигателями</h1>
+        
+        <!-- Шаговый двигатель 1 -->
+        <div class="stepper-container">
+            <h3>Шаговый двигатель 1</h3>
+            <div class="slider-container">
+                <label for="stepper1Degrees">Угол поворота (градусы):</label>
+                <input type="number" id="stepper1Degrees" min="0" max="360" value="90">
+            </div>
+            <div class="motor-control">
+                <button id="stepper1CwBtn" class="direction-btn">По часовой</button>
+                <button id="stepper1CcwBtn" class="direction-btn">Против часовой</button>
+            </div>
+            <div>
+                <button id="moveStepper1Btn">Выполнить поворот</button>
+            </div>
         </div>
-        <div class="joystick" id="joystick2">
-            <div class="stick" id="stick2" draggable="true"></div>
-        </div>
-        <div class="joystick" id="joystick3">
-            <div class="stick" id="stick3" draggable="true"></div>
+        
+        <!-- Шаговый двигатель 2 -->
+        <div class="stepper-container">
+            <h3>Шаговый двигатель 2</h3>
+            <div class="slider-container">
+                <label for="stepper2Degrees">Угол поворота (градусы):</label>
+                <input type="number" id="stepper2Degrees" min="0" max="360" value="90">
+            </div>
+            <div class="motor-control">
+                <button id="stepper2CwBtn" class="direction-btn">По часовой</button>
+                <button id="stepper2CcwBtn" class="direction-btn">Против часовой</button>
+            </div>
+            <div>
+                <button id="moveStepper2Btn">Выполнить поворот</button>
+            </div>
         </div>
     </div>
 
+    <div class="control-panel">
+        <h2>MQTT подключение</h2>
+        <div>
+            <label for="username">Username:</label>
+            <input id="username" type="text" value="krushka">
+            <label for="password">Password:</label>
+            <input id="password" type="password" value="Kr5st9k2006">
+        </div>
+        <div>
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        <div>
+            <label for="servoTopic">Топик серво:</label>
+            <input id="servoTopic" type="text" value="servo/control" placeholder="MQTT Topic">
+            <label for="stepperTopic">Топик шаговика:</label>
+            <input id="stepperTopic" type="text" value="stepper/control" placeholder="MQTT Topic">
+        </div>
+    </div>
+
+    <div id="messages"></div>
+
     <script>
-        function validateInputs() {
-            const servoValues = [
-                document.getElementById('servo1').value,
-                document.getElementById('servo2').value,
-                document.getElementById('servo3').value,
-                document.getElementById('servo4').value,
-                document.getElementById('servo5').value
-            ];
-            const errorMessage = document.getElementById('error-message');
-            errorMessage.style.display = 'none'; // Скрыть сообщение об ошибке
+        // MQTT settings
+        const brokerUrl = 'wss://d1ec323fd6904363bc62ae1f22132549.s1.eu.hivemq.cloud:8884/mqtt';
+        let client = null;
+        let isConnected = false;
 
-            for (let i = 0; i < servoValues.length; i++) {
-                const value = parseInt(servoValues[i], 10);
-                if (value < 0 || value > 360) {
-                    errorMessage.innerText = `Ошибка: Угол для сервопривода ${i + 1} должен быть в диапазоне от 0 до 360 градусов.`;
-                    errorMessage.style.display = 'block';
-                    return false; // Возвращаем false, если есть ошибка
-                }
-            }
-            return true; // Все значения корректны
-        }
+        // DOM elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const servoTopicInput = document.getElementById('servoTopic');
+        const stepper1TopicInput = document.getElementById('stepper1Topic');
+        const stepper2TopicInput = document.getElementById('stepper2Topic');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messagesDiv = document.getElementById('messages');
+        const servoSlider = document.getElementById('servoSlider');
+        const servoValue = document.getElementById('servoValue');
+        
+        // Stepper 1 elements
+        const stepper1Degrees = document.getElementById('stepper1Degrees');
+        const stepper1CwBtn = document.getElementById('stepper1CwBtn');
+        const stepper1CcwBtn = document.getElementById('stepper1CcwBtn');
+        const moveStepper1Btn = document.getElementById('moveStepper1Btn');
+        
+        // Stepper 2 elements
+        const stepper2Degrees = document.getElementById('stepper2Degrees');
+        const stepper2CwBtn = document.getElementById('stepper2CwBtn');
+        const stepper2CcwBtn = document.getElementById('stepper2CcwBtn');
+        const moveStepper2Btn = document.getElementById('moveStepper2Btn');
 
-        function sendControl() {
-            if (!validateInputs()) return; // Проверка значений перед отправкой
+        // Direction flags
+        let stepper1Direction = 1;
+        let stepper2Direction = 1;
 
-            const servoValues = {
-                servo1: document.getElementById('servo1').value,
-                servo2: document.getElementById('servo2').value,
-                servo3: document.getElementById('servo3').value,
-                servo4: document.getElementById('servo4').value,
-                servo5: document.getElementById('servo5').value
+        // Connect to broker
+        connectBtn.addEventListener('click', () => {
+            const options = {
+                username: usernameInput.value,
+                password: passwordInput.value,
+                rejectUnauthorized: false
             };
 
-            fetch('/control', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(servoValues)
-            })
-            .then(response => response.text())
-            .then(data => alert(data))
-            .catch(error => console.error('Ошибка:', error));
-        }
+            client = mqtt.connect(brokerUrl, options);
 
-        function saveTemplate() {
-            if (!validateInputs()) return; // Проверка значений перед сохранением шаблона
+            client.on('connect', () => {
+                logMessage('Connected to HiveMQ Cloud broker');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                isConnected = true;
+                
+                // Подписываемся на топики
+                client.subscribe(servoTopicInput.value);
+                client.subscribe(stepper1TopicInput.value);
+                client.subscribe(stepper2TopicInput.value);
+            });
 
-            const servoValues = {
-                servo1: document.getElementById('servo1').value,
-                servo2: document.getElementById('servo2').value,
-                servo3: document.getElementById('servo3').value,
-                servo4: document.getElementById('servo4').value,
-                servo5: document.getElementById('servo5').value
-            };
+            client.on('error', (err) => {
+                logMessage(`Connection error: ${err}`);
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                isConnected = false;
+            });
 
-            fetch('/save_template', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(servoValues)
-            })
-            .then(response => response.text())
-            .then(data => alert(data))
-            .catch(error => console.error('Ошибка:', error));
-        }
+            client.on('message', (topic, message) => {
+                logMessage(`Received message on ${topic}: ${message.toString()}`);
+            });
 
-        function updateServoFromJoystick(joystickId, servoIndex) {
-            const stick = document.getElementById(joystickId);
-            const rect = stick.getBoundingClientRect();
-            const offsetX = event.clientX - rect.left - (stick.offsetWidth / 2);
-            const offsetY = event.clientY - rect.top - (stick.offsetHeight / 2);
-            const angle = Math.atan2(offsetY, offsetX) * (180 / Math.PI) + 180; // Преобразование в угол
-
-            document.getElementById(`servo${servoIndex}`).value = Math.min(Math.max(Math.round(angle), 0), 360);
-            sendControl();
-        }
-
-        document.querySelectorAll('.stick').forEach((stick, index) => {
-            stick.addEventListener('drag', (event) => {
-                updateServoFromJoystick(`joystick${index + 1}`, index + 1);
+            client.on('close', () => {
+                logMessage('Connection closed');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                isConnected = false;
             });
         });
+
+        // Disconnect from broker
+        disconnectBtn.addEventListener('click', () => {
+            if (client) {
+                client.end();
+                client = null;
+            }
+        });
+
+        // Servo control
+        servoSlider.addEventListener('input', () => {
+            const value = servoSlider.value;
+            servoValue.textContent = `${value}°`;
+            
+            if (isConnected) {
+                const topic = servoTopicInput.value || 'servo/control';
+                client.publish(topic, value);
+                logMessage(`Sent servo position: ${value}°`);
+            }
+        });
+
+       // Stepper 1 control
+       stepper1CwBtn.addEventListener('click', () => {
+            stepper1Direction = 1;
+            logMessage("Stepper 1: Direction set to Clockwise");
+        });
+        
+        stepper1CcwBtn.addEventListener('click', () => {
+            stepper1Direction = 0;
+            logMessage("Stepper 1: Direction set to Counter-Clockwise");
+        });
+        
+        moveStepper1Btn.addEventListener('click', () => {
+            const degrees = stepper1Degrees.value;
+            if (isConnected) {n
+                const topic = 'stepper1/control';
+                const message = `de${degrees}di${stepper1Direction}`;
+                client.publish(topic, message);
+                logMessage(`Stepper 1: Sent command ${degrees}° ${stepper1Direction ? 'CW' : 'CCW'}`);
+            }
+        });
+
+        // Stepper 2 control
+        stepper2CwBtn.addEventListener('click', () => {
+            stepper2Direction = 1;
+            logMessage("Stepper 2: Direction set to Clockwise");
+        });
+        
+        stepper2CcwBtn.addEventListener('click', () => {
+            stepper2Direction = 0;
+            logMessage("Stepper 2: Direction set to Counter-Clockwise");
+        });
+        
+        moveStepper2Btn.addEventListener('click', () => {
+            const degrees = stepper2Degrees.value;
+            if (isConnected) {
+                const topic = 'stepper2/control';
+                const message = `de${degrees}di${stepper2Direction}`;
+                client.publish(topic, message);
+                logMessage(`Stepper 2: Sent command ${degrees}° ${stepper2Direction ? 'CW' : 'CCW'}`);
+            }
+        });
+
+
+        // Helper function to log messages
+        function logMessage(message) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
     </script>
 </body>
 </html>
