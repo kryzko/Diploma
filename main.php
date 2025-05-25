@@ -1,3 +1,4 @@
+<?php session_start();?> 
 </html>
 <!DOCTYPE html>
 <html lang="ru">
@@ -89,7 +90,7 @@
                     Система управления роботизированным манипулятором
                 </h1>
                 <p class="mt-4 sm:mt-6 max-w-lg mx-auto text-lg sm:text-xl">
-                    Дипломный проект, демонстрирующий алгоритмы точного управления промышленными роботами-манипуляторами.
+                    Дипломный проект, демонстрирующий алгоритмы управления самодельным роботом-манипулятором.
                 </p>
             </div>
         </div>
@@ -131,20 +132,22 @@
                         </p>
                     </div>
                     
-                    <form id="loginForm" class="space-y-4 sm:space-y-6">
+                    <form action="login.php" method="POST" class="space-y-4 sm:space-y-6">
                         <div>
-                            <label for="username" class="block text-sm font-medium text-gray-700">
-                                Имя пользователя
+                            <label for="email" class="block text-sm font-medium text-gray-700">
+                                Почта пользователя
                             </label>
                             <div class="mt-1 relative rounded-md shadow-sm">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-user text-gray-400"></i>
+                                    <i class="fas fa-envelope text-gray-400"></i>
                                 </div>
-                                <input id="username" name="username" type="text" required 
-                                    class="py-2 pl-10 block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="email" name="email" value="<?= $_SESSION['old_email'] ?? '' ?>" required
+                                class="py-2 pl-10 block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <?php unset($_SESSION['old_email']); ?> 
+                                    
                             </div>
                         </div>
-
+        
                         <div>
                             <label for="password" class="block text-sm font-medium text-gray-700">
                                 Пароль
@@ -158,15 +161,7 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <input id="remember-me" name="remember-me" type="checkbox" 
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="remember-me" class="ml-2 block text-sm text-gray-700">
-                                    Запомнить меня
-                                </label>
-                            </div>
-                        </div>
+                        
 
                         <div>
                             <button type="submit" 
@@ -224,8 +219,8 @@
                 </p>
             </div>
 
-            <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
                     <div class="flex items-center justify-center h-12 w-12 rounded-md bg-purple-100 text-purple-600">
                         <i class="fas fa-camera"></i>
                     </div>
@@ -233,13 +228,9 @@
                     <p class="mt-2 text-base text-gray-600">
                         Интеграция камеры с искусственным интеллектом для обработки изображений на сервере и передачи результатов на манипулятор.
                     </p>
-                    <div class="mt-4 flex items-center text-sm text-gray-500">
-                        <i class="fas fa-clock mr-2"></i>
-                        <span>Планируется к реализации в Q2 2024</span>
-                    </div>
                 </div>
 
-                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
                     <div class="flex items-center justify-center h-12 w-12 rounded-md bg-yellow-100 text-yellow-600">
                         <i class="fas fa-cube"></i>
                     </div>
@@ -247,10 +238,16 @@
                     <p class="mt-2 text-base text-gray-600">
                         Разработка собственной 3D модели манипулятора с точной физикой и возможностью виртуального тестирования.
                     </p>
-                    <div class="mt-4 flex items-center text-sm text-gray-500">
-                        <i class="fas fa-clock mr-2"></i>
-                        <span>Планируется к реализации в Q3 2024</span>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 text-blue-600">
+                        <i class="fas fa-server"></i>
                     </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Хостинг сайта</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Реализация полноценного хостинга с собственным доменом для обеспечения стабильной работы системы управления.
+                    </p>
                 </div>
             </div>
         </div>
@@ -273,7 +270,7 @@
                     </div>
                     <h3 class="mt-4 text-lg font-medium text-gray-900">Email</h3>
                     <p class="mt-2 text-base text-gray-600">
-                        robotics@university.edu
+                        0kryshka0@gmail.com
                     </p>
                 </div>
 
@@ -283,7 +280,7 @@
                     </div>
                     <h3 class="mt-4 text-lg font-medium text-gray-900">Telegram</h3>
                     <p class="mt-2 text-base text-gray-600">
-                        @robocontrol_support
+                        @krushka123
                     </p>
                 </div>
             </div>
@@ -297,14 +294,14 @@
                 <div class="text-center md:text-left">
                     <h3 class="text-sm font-semibold tracking-wider uppercase">Ресурсы</h3>
                     <ul class="mt-4 space-y-2">
-                        <li><a href="#" class="text-gray-300 hover:text-white">Учебные материалы</a></li>
-                        <li><a href="#" class="text-gray-300 hover:text-white">Справочник API</a></li>
+                        <li><a href="https://www.printables.com/model/449747-brazo-robotico-robotic-arm" class="text-gray-300 hover:text-white">3D модель</a></li>
+                        <li><a href="https://www.hivemq.com/" class="text-gray-300 hover:text-white">MQTT брокер</a></li>
                     </ul>
                 </div>
                 <div class="text-center md:text-left">
                     <h3 class="text-sm font-semibold tracking-wider uppercase">GitHub</h3>
                     <div class="mt-4">
-                        <a href="#" class="text-gray-300 hover:text-white inline-flex items-center justify-center sm:justify-start">
+                        <a href="https://github.com/kryzko/Diploma" class="text-gray-300 hover:text-white inline-flex items-center justify-center sm:justify-start">
                             <i class="fab fa-github text-xl"></i>
                             <span class="ml-2">Исходный код проекта</span>
                         </a>

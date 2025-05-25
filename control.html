@@ -34,6 +34,7 @@
         }
         #messages {
             margin-top: 20px;
+            margin-bottom: 20px;
             height: 200px;
             overflow-y: auto;
             border: 1px solid #ddd;
@@ -47,9 +48,29 @@
         .direction-btn {
             width: 48%;
         }
+        .connection-form {
+            margin-bottom: 15px;
+        }
+        .connection-form input {
+            margin-right: 10px;
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
+    <div class="control-panel">
+        <h2>MQTT подключение</h2>
+        <div class="connection-form">
+            <label for="username">Имя пользователя:</label>
+            <input id="username" type="text" value="krushka">
+            <label for="password">Пароль:</label>
+            <input id="password" type="password" value="Kr5st9k2006">
+            <button id="connectBtn">Подключиться</button>
+            <button id="disconnectBtn" disabled>Отключиться</button>
+        </div>
+    </div>
+    <div id="messages"></div>
+
     <div class="control-panel">
         <h1>Управление сервоприводом</h1>
         <div class="slider-container">
@@ -95,40 +116,28 @@
         </div>
     </div>
 
-    <div class="control-panel">
-        <h2>MQTT подключение</h2>
-        <div>
-            <label for="username">Username:</label>
-            <input id="username" type="text" value="krushka">
-            <label for="password">Password:</label>
-            <input id="password" type="password" value="Kr5st9k2006">
-        </div>
-        <div>
-            <button id="connectBtn">Connect</button>
-            <button id="disconnectBtn" disabled>Disconnect</button>
-        </div>
-        <div>
-            <label for="servoTopic">Топик серво:</label>
-            <input id="servoTopic" type="text" value="servo/control" placeholder="MQTT Topic">
-            <label for="stepperTopic">Топик шаговика:</label>
-            <input id="stepperTopic" type="text" value="stepper/control" placeholder="MQTT Topic">
-        </div>
-    </div>
-
-    <div id="messages"></div>
 
     <script>
+        window.addEventListener('beforeunload', function(e) {
+            // Отправляем AJAX-запрос для выхода
+            fetch('logout.php', {
+                method: 'POST',
+                credentials: 'same-origin' // Для передачи куков сессии
+            });
+        });
+
         // MQTT settings
         const brokerUrl = 'wss://d1ec323fd6904363bc62ae1f22132549.s1.eu.hivemq.cloud:8884/mqtt';
+        const servoTopic = 'servo/control';
+        const stepper1Topic = 'stepper1/control';
+        const stepper2Topic = 'stepper2/control';
+        
         let client = null;
         let isConnected = false;
 
         // DOM elements
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
-        const servoTopicInput = document.getElementById('servoTopic');
-        const stepper1TopicInput = document.getElementById('stepper1Topic');
-        const stepper2TopicInput = document.getElementById('stepper2Topic');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const messagesDiv = document.getElementById('messages');
@@ -162,30 +171,31 @@
             client = mqtt.connect(brokerUrl, options);
 
             client.on('connect', () => {
-                logMessage('Connected to HiveMQ Cloud broker');
+                logMessage('Подключение к HiveMQ cloud');
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
                 isConnected = true;
                 
-                // Подписываемся на топики
-                client.subscribe(servoTopicInput.value);
-                client.subscribe(stepper1TopicInput.value);
-                client.subscribe(stepper2TopicInput.value);
+                // Подписываемся на фиксированные топики
+                client.subscribe(servoTopic);
+                client.subscribe(stepper1Topic);
+                client.subscribe(stepper2Topic);
+                logMessage(`Подписка на темы: ${servoTopic}, ${stepper1Topic}, ${stepper2Topic}`);
             });
 
             client.on('error', (err) => {
-                logMessage(`Connection error: ${err}`);
+                logMessage(`Ошибка подключения: ${err}`);
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 isConnected = false;
             });
 
             client.on('message', (topic, message) => {
-                logMessage(`Received message on ${topic}: ${message.toString()}`);
+                logMessage(`Отправлено сообщение на ${topic}: ${message.toString()}`);
             });
 
             client.on('close', () => {
-                logMessage('Connection closed');
+                logMessage('Подключение закрыто');
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 isConnected = false;
@@ -206,59 +216,55 @@
             servoValue.textContent = `${value}°`;
             
             if (isConnected) {
-                const topic = servoTopicInput.value || 'servo/control';
-                client.publish(topic, value);
-                logMessage(`Sent servo position: ${value}°`);
+                client.publish(servoTopic, value);
+                logMessage(`Отправлена позиция сервопривода на ${servoTopic}: ${value}°`);
             }
         });
 
-       // Stepper 1 control
-       stepper1CwBtn.addEventListener('click', () => {
+        // Stepper 1 control
+        stepper1CwBtn.addEventListener('click', () => {
             stepper1Direction = 1;
-            logMessage("Stepper 1: Direction set to Clockwise");
+            logMessage("Мотор 1: установлен поворот по часовой стрелке");
         });
         
         stepper1CcwBtn.addEventListener('click', () => {
             stepper1Direction = 0;
-            logMessage("Stepper 1: Direction set to Counter-Clockwise");
+            logMessage("Мотор 1: установлен поворот против часовой стрелки");
         });
         
         moveStepper1Btn.addEventListener('click', () => {
             const degrees = stepper1Degrees.value;
-            if (isConnected) {n
-                const topic = 'stepper1/control';
+            if (isConnected) {
                 const message = `de${degrees}di${stepper1Direction}`;
-                client.publish(topic, message);
-                logMessage(`Stepper 1: Sent command ${degrees}° ${stepper1Direction ? 'CW' : 'CCW'}`);
+                client.publish(stepper1Topic, message);
+                logMessage(`Мотор 1: Отправлена команда ${stepper1Topic} - ${degrees}° ${stepper1Direction ? 'CW' : 'CCW'}`);
             }
         });
 
         // Stepper 2 control
         stepper2CwBtn.addEventListener('click', () => {
             stepper2Direction = 1;
-            logMessage("Stepper 2: Direction set to Clockwise");
+            logMessage("Мотор 2: установлен поворот по часовой стрелке");
         });
         
         stepper2CcwBtn.addEventListener('click', () => {
             stepper2Direction = 0;
-            logMessage("Stepper 2: Direction set to Counter-Clockwise");
+            logMessage("Мотор 2: установлен поворот против часовой стрелки");
         });
         
         moveStepper2Btn.addEventListener('click', () => {
             const degrees = stepper2Degrees.value;
             if (isConnected) {
-                const topic = 'stepper2/control';
                 const message = `de${degrees}di${stepper2Direction}`;
-                client.publish(topic, message);
-                logMessage(`Stepper 2: Sent command ${degrees}° ${stepper2Direction ? 'CW' : 'CCW'}`);
+                client.publish(stepper2Topic, message);
+                logMessage(`Мотор 2: Отправлена команда ${stepper2Topic} - ${degrees}° ${stepper2Direction ? 'CW' : 'CCW'}`);
             }
         });
-
 
         // Helper function to log messages
         function logMessage(message) {
             const messageElement = document.createElement('div');
-            messageElement.textContent = message;
+            messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
