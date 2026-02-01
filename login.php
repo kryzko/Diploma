@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $_SESSION['login_error'] = "Неверный email или пароль";
         $_SESSION['old_email'] = htmlspecialchars($email); // Сохраняем введенный email
-        header("Location: main.php");
+        header("Location: index.php");
         exit;
     }
 }

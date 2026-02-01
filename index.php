@@ -1,0 +1,354 @@
+<?php session_start();?> 
+</html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система управления роботизированным манипулятором</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0ea5e9 100%);
+        }
+        .robot-arm {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        .login-form {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .joint-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #10b981;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+        .input-error {
+            border-color: #ef4444 !important;
+        }
+        @media (max-width: 640px) {
+            .mobile-stack {
+                flex-direction: column;
+            }
+            .mobile-full-width {
+                width: 100%;
+            }
+            .mobile-text-center {
+                text-align: center;
+            }
+            .mobile-mt-4 {
+                margin-top: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50">
+    <!-- Навигация -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <i class="fas fa-robot text-blue-600 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold text-gray-900">RoboControl</span>
+                    </div>
+                </div>
+                <div class="hidden sm:ml-6 sm:flex sm:items-center">
+                    <a href="#features" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Возможности</a>
+                    <a href="#future" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Будущие дополнения</a>
+                    <a href="#contact" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Контакты</a>
+                </div>
+                <div class="sm:hidden flex items-center">
+                    <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-expanded="false" id="mobile-menu-button">
+                        <span class="sr-only">Open main menu</span>
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Бургер меню для телефона -->
+        <div class="hidden sm:hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="#features" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Возможности</a>
+                <a href="#future" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Будущие дополнения</a>
+                <a href="#contact" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100">Контакты</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Главный раздел -->
+    <div class="hero-gradient text-white">
+        <div class="max-w-7xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">
+                    Система управления роботизированным манипулятором
+                </h1>
+                <p class="mt-4 sm:mt-6 max-w-lg mx-auto text-lg sm:text-xl">
+                    Дипломный проект, демонстрирующий алгоритмы управления самодельным роботом-манипулятором.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основное содержимое -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="lg:grid lg:grid-cols-12 lg:gap-8 mobile-stack">
+            <!-- Левая колонка - Визуализация робота -->
+            <div class="lg:col-span-7 mb-12 lg:mb-0">
+                <div class="relative">
+                    <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative">
+                            <div class="joint-indicator"></div>
+                            <h3 class="font-medium text-gray-900">Базовый узел</h3>
+                            <p class="mt-1 text-sm text-gray-500">Вращение на 360°</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative">
+                            <div class="joint-indicator"></div>
+                            <h3 class="font-medium text-gray-900">Узлы</h3>
+                            <p class="mt-1 text-sm text-gray-500">Точное позиционирование</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative">
+                            <div class="joint-indicator"></div>
+                            <h3 class="font-medium text-gray-900">Локоть</h3>
+                            <p class="mt-1 text-sm text-gray-500">Гибкое движение</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка - Форма входа -->
+            <div class="lg:col-span-5">
+                <div class="bg-white login-form rounded-lg p-6 sm:p-8">
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Доступ оператора</h2>
+                        <p class="mt-2 text-sm text-gray-600">
+                            Войдите в систему для управления манипулятором
+                        </p>
+                        <?php if(isset($_SESSION['login_error'])): ?>
+                            <div class="mt-2 text-sm text-red-600">
+                                <?= $_SESSION['login_error'] ?>
+                            </div>
+                            <?php unset($_SESSION['login_error']); ?>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <form action="login.php" method="POST" class="space-y-4 sm:space-y-6">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700">
+                                Почта пользователя
+                            </label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-envelope text-gray-400"></i>
+                                </div>
+                                <input type="email" name="email" value="<?= $_SESSION['old_email'] ?? '' ?>" required
+                                class="py-2 pl-10 block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 <?= isset($_SESSION['login_error']) ? 'input-error' : '' ?>">
+                                <?php unset($_SESSION['old_email']); ?> 
+                            </div>
+                        </div>
+        
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700">
+                                Пароль
+                            </label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-gray-400"></i>
+                                </div>
+                                <input id="password" name="password" type="password" required 
+                                    class="py-2 pl-10 block w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 <?= isset($_SESSION['login_error']) ? 'input-error' : '' ?>">
+                            </div>
+                        </div>
+
+                        <div>
+                            <button type="submit" 
+                                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Войти
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Раздел возможностей -->
+    <div id="features" class="bg-gray-100 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">Возможности системы</h2>
+                <p class="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
+                    Современные технологии для точного управления роботизированным манипулятором
+                </p>
+            </div>
+
+            <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 text-blue-600">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Обратная кинематика</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Точный расчет углов суставов для достижения желаемого положения и ориентации исполнительного органа.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-green-100 text-green-600">
+                        <i class="fas fa-save"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Запись шаблонов</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Позволяет записывать и воспроизводить шаблоны управления для автоматизации повторяющихся операций.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Будущие дополнения -->
+    <div id="future" class="bg-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">Будущие дополнения</h2>
+                <p class="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
+                    Планируемые функции и улучшения системы
+                </p>
+            </div>
+
+            <div class="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-purple-100 text-purple-600">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Камера с ИИ</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Интеграция камеры с искусственным интеллектом для обработки изображений на сервере и передачи результатов на манипулятор.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">3D модель манипулятора</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Разработка собственной 3D модели манипулятора с точной физикой и возможностью виртуального тестирования.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 future-feature-card">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 text-blue-600">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Хостинг сайта</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        Реализация полноценного хостинга с собственным доменом для обеспечения стабильной работы системы управления.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Контакты -->
+    <div id="contact" class="bg-gray-50 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">Контакты</h2>
+                <p class="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
+                    Для вопросов о системе управления роботизированным манипулятором
+                </p>
+            </div>
+
+            <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-md mx-auto">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 text-blue-600 mx-auto">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Email</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        0kryshka0@gmail.com
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 text-blue-600 mx-auto">
+                        <i class="fab fa-telegram"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Telegram</h3>
+                    <p class="mt-2 text-base text-gray-600">
+                        @krushka123
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подвал -->
+    <footer class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="text-center md:text-left">
+                    <h3 class="text-sm font-semibold tracking-wider uppercase">Ресурсы</h3>
+                    <ul class="mt-4 space-y-2">
+                        <li><a href="https://www.printables.com/model/449747-brazo-robotico-robotic-arm" class="text-gray-300 hover:text-white">3D модель</a></li>
+                        <li><a href="https://www.hivemq.com/" class="text-gray-300 hover:text-white">MQTT брокер</a></li>
+                    </ul>
+                </div>
+                <div class="text-center md:text-left">
+                    <h3 class="text-sm font-semibold tracking-wider uppercase">GitHub</h3>
+                    <div class="mt-4">
+                        <a href="https://github.com/kryzko/Diploma" class="text-gray-300 hover:text-white inline-flex items-center justify-center sm:justify-start">
+                            <i class="fab fa-github text-xl"></i>
+                            <span class="ml-2">Исходный код проекта</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-12 border-t border-gray-700 pt-8 flex flex-col items-center">
+                <p class="text-gray-400 text-sm">
+                    &copy; 2025 Система управления роботизированным манипулятором. Дипломный проект.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+            } else {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Login form handling
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const email = document.querySelector('input[name="email"]');
+            const password = document.getElementById('password');
+            
+            // Сбросить классы ошибок
+            email.classList.remove('input-error');
+            password.classList.remove('input-error');
+            
+            // Простая валидация
+            if(!email.value || !password.value) {
+                e.preventDefault();
+                if(!email.value) email.classList.add('input-error');
+                if(!password.value) password.classList.add('input-error');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,139 +1,471 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Управление серво и шаговым двигателем</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление сервоприводами и шаговым двигателем</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .control-panel {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .slider-container {
-            margin: 20px 0;
-        }
-        .slider {
-            width: 100%;
-        }
-        .value-display {
-            text-align: center;
-            font-size: 24px;
-            margin: 10px 0;
-        }
-        button {
-            padding: 10px 15px;
-            margin-right: 10px;
+        /* Стили для ползунков сервоприводов */
+        .servo-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
             cursor: pointer;
         }
+        
+        .servo-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        
         #messages {
-            margin-top: 20px;
-            margin-bottom: 20px;
-            height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #e5e7eb;
         }
-        .motor-control {
+        
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #messages::-webkit-scrollbar-track {
+            background: #e5e7eb;
+        }
+        
+        #messages::-webkit-scrollbar-thumb {
+            background-color: #3b82f6;
+            border-radius: 20px;
+        }
+        
+        .arrow-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .arrow-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .arrow-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Стили для переключателей (switches) */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .switch-slider {
+            background-color: #3b82f6;
+        }
+        
+        input:checked + .switch-slider:before {
+            transform: translateX(26px);
+        }
+        
+        /* Стиль для скрытого input файла */
+        .file-input {
+            display: none;
+        }
+        
+        /* Анимация для кнопок */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Модальное окно для сохранения */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-actions {
             display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-        }
-        .direction-btn {
-            width: 48%;
-        }
-        .connection-form {
-            margin-bottom: 15px;
-        }
-        .connection-form input {
-            margin-right: 10px;
-            padding: 5px;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
         }
     </style>
 </head>
-<body>
-    <div class="control-panel">
-        <h2>MQTT подключение</h2>
-        <div class="connection-form">
-            <label for="username">Имя пользователя:</label>
-            <input id="username" type="text" value="krushka">
-            <label for="password">Пароль:</label>
-            <input id="password" type="password" value="Kr5st9k2006">
-            <button id="connectBtn">Подключиться</button>
-            <button id="disconnectBtn" disabled>Отключиться</button>
-        </div>
-    </div>
-    <div id="messages"></div>
-
-    <div class="control-panel">
-        <h1>Управление сервоприводом</h1>
-        <div class="slider-container">
-            <label for="servoSlider">Положение сервопривода (0-180°):</label>
-            <input type="range" id="servoSlider" class="slider" min="0" max="180" value="90">
-            <div class="value-display" id="servoValue">90°</div>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Модальное окно для сохранения -->
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Сохранение шаблона</h3>
+            <div class="mb-4">
+                <label for="templateName" class="block text-sm font-medium text-gray-700 mb-1">Имя файла:</label>
+                <input type="text" id="templateName" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2" value="template.json">
+            </div>
+            <div class="modal-actions">
+                <button id="cancelSaveBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    Отмена
+                </button>
+                <button id="confirmSaveBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Сохранить
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="control-panel">
-        <h1>Управление шаговыми двигателями</h1>
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Управление сервоприводами и шаговым двигателем</h1>
+            <p class="text-gray-600">Интерфейс управления через MQTT протокол</p>
+        </header>
+
+        <!-- Connection Panel -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-plug mr-2 text-blue-500"></i> MQTT подключение
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Имя пользователя:</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input id="username" type="text" value="krushka" class="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Пароль:</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input id="password" type="password" value="Kr5st9k2006" class="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+                <button id="connectBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center">
+                    <i class="fas fa-link mr-2"></i> Подключиться
+                </button>
+                <button id="disconnectBtn" disabled class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center">
+                    <i class="fas fa-unlink mr-2"></i> Отключиться
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Log -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-medium text-gray-800 flex items-center">
+                    <i class="fas fa-terminal mr-2 text-blue-500"></i> Журнал сообщений
+                </h3>
+                <button id="clearLogBtn" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+                    <i class="fas fa-trash-alt mr-1"></i> Очистить
+                </button>
+            </div>
+            <div id="messages" class="h-48 overflow-y-auto bg-gray-50 p-3 rounded-md font-mono text-sm"></div>
+        </div>
+
+        <!-- Recording Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-record-vinyl mr-2 text-blue-500"></i> Управление шаблонами
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Тип записи:</label>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <input type="radio" id="recordFull" name="recordType" value="full" class="h-4 w-4 text-blue-600 focus:ring-blue-500" checked>
+                            <label for="recordFull" class="ml-2 block text-sm text-gray-700">Полная запись (все действия)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="recordPositions" name="recordType" value="positions" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                            <label for="recordPositions" class="ml-2 block text-sm text-gray-700">Только позиции (начальное/конечное)</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Записываемые оси:</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <label class="switch mr-3">
+                                <input type="checkbox" id="recordServo1" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <label for="recordServo1" class="block text-sm text-gray-700">Сервопривод 1</label>
+                        </div>
+                        <div class="flex items-center">
+                            <label class="switch mr-3">
+                                <input type="checkbox" id="recordServo2" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <label for="recordServo2" class="block text-sm text-gray-700">Сервопривод 2</label>
+                        </div>
+                        <div class="flex items-center">
+                            <label class="switch mr-3">
+                                <input type="checkbox" id="recordServo3" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <label for="recordServo3" class="block text-sm text-gray-700">Сервопривод 3</label>
+                        </div>
+                        <div class="flex items-center">
+                            <label class="switch mr-3">
+                                <input type="checkbox" id="recordStepper" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <label for="recordStepper" class="block text-sm text-gray-700">Шаговый двигатель</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex flex-wrap justify-center gap-4">
+                <button id="startRecordingBtn" class="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center">
+                    <i class="fas fa-circle mr-2"></i> Начать запись
+                </button>
+                <button id="stopRecordingBtn" class="px-6 py-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center hidden">
+                    <i class="fas fa-stop mr-2"></i> Остановить запись
+                </button>
+                <button id="saveTemplateBtn" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center">
+                    <i class="fas fa-save mr-2"></i> Сохранить шаблон
+                </button>
+                <button id="openTemplateBtn" class="px-6 py-3 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 flex items-center">
+                    <i class="fas fa-folder-open mr-2"></i> Открыть шаблон
+                </button>
+                <input type="file" id="fileInput" accept=".json" class="file-input">
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-play-circle mr-2 text-blue-500"></i> Воспроизведение шаблона
+                </h3>
+                
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div class="w-full md:w-auto">
+                        <label for="playbackCount" class="block text-sm font-medium text-gray-700 mb-1">Количество повторений (0 = бесконечно):</label>
+                        <div class="relative">
+                            <input type="number" id="playbackCount" min="0" value="1" class="w-full md:w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-3 pr-10 py-2">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <button id="playTemplateBtn" disabled class="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center">
+                            <i class="fas fa-play mr-2"></i> Запустить
+                        </button>
+                        <button id="stopPlaybackBtn" class="px-6 py-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center hidden">
+                            <i class="fas fa-stop mr-2"></i> Остановить
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="playbackStatus" class="mt-3 text-sm text-gray-500 text-center hidden">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <span id="currentPlaybackInfo">Воспроизведение: 1/1</span>
+                </div>
+                
+                <div id="templateInfo" class="mt-4 p-3 bg-blue-50 rounded-md hidden">
+                    <h4 class="font-medium text-blue-800 mb-2 flex items-center">
+                        <i class="fas fa-info-circle mr-2"></i> Информация о шаблоне
+                    </h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="font-medium">Тип:</span> <span id="templateType">-</span></div>
+                        <div><span class="font-medium">Дата создания:</span> <span id="templateDate">-</span></div>
+                        <div><span class="font-medium">Сервопривод 1:</span> <span id="templateServo1">-</span></div>
+                        <div><span class="font-medium">Сервопривод 2:</span> <span id="templateServo2">-</span></div>
+                        <div><span class="font-medium">Сервопривод 3:</span> <span id="templateServo3">-</span></div>
+                        <div><span class="font-medium">Шаговый двигатель:</span> <span id="templateStepper">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        <!-- Шаговый двигатель 1 -->
-        <div class="stepper-container">
-            <h3>Шаговый двигатель 1</h3>
-            <div class="slider-container">
-                <label for="stepper1Degrees">Угол поворота (градусы):</label>
-                <input type="number" id="stepper1Degrees" min="0" max="360" value="90">
+        <!-- Servo Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-cogs mr-2 text-blue-500"></i> Управление сервоприводами
+            </h2>
+            
+            <!-- Servo 1 -->
+            <div class="servo-group mb-6 pb-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-robot mr-2 text-blue-400"></i> Сервопривод 1
+                </h3>
+                <div class="slider-container">
+                    <label for="servo1Slider" class="block text-sm font-medium text-gray-700 mb-2">Положение (0-180°):</label>
+                    <input type="range" id="servo1Slider" class="servo-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="180" value="90">
+                    <div class="value-display text-center text-2xl font-bold text-blue-600 my-3" id="servo1Value">90°</div>
+                </div>
             </div>
-            <div class="motor-control">
-                <button id="stepper1CwBtn" class="direction-btn">По часовой</button>
-                <button id="stepper1CcwBtn" class="direction-btn">Против часовой</button>
+            
+            <!-- Servo 2 -->
+            <div class="servo-group mb-6 pb-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-robot mr-2 text-blue-400"></i> Сервопривод 2
+                </h3>
+                <div class="slider-container">
+                    <label for="servo2Slider" class="block text-sm font-medium text-gray-700 mb-2">Положение (0-180°):</label>
+                    <input type="range" id="servo2Slider" class="servo-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="180" value="90">
+                    <div class="value-display text-center text-2xl font-bold text-blue-600 my-3" id="servo2Value">90°</div>
+                </div>
             </div>
-            <div>
-                <button id="moveStepper1Btn">Выполнить поворот</button>
+            
+            <!-- Servo 3 -->
+            <div class="servo-group">
+                <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-robot mr-2 text-blue-400"></i> Сервопривод 3
+                </h3>
+                <div class="slider-container">
+                    <label for="servo3Slider" class="block text-sm font-medium text-gray-700 mb-2">Положение (0-180°):</label>
+                    <input type="range" id="servo3Slider" class="servo-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="180" value="90">
+                    <div class="value-display text-center text-2xl font-bold text-blue-600 my-3" id="servo3Value">90°</div>
+                </div>
             </div>
         </div>
-        
-        <!-- Шаговый двигатель 2 -->
-        <div class="stepper-container">
-            <h3>Шаговый двигатель 2</h3>
-            <div class="slider-container">
-                <label for="stepper2Degrees">Угол поворота (градусы):</label>
-                <input type="number" id="stepper2Degrees" min="0" max="360" value="90">
-            </div>
-            <div class="motor-control">
-                <button id="stepper2CwBtn" class="direction-btn">По часовой</button>
-                <button id="stepper2CcwBtn" class="direction-btn">Против часовой</button>
-            </div>
-            <div>
-                <button id="moveStepper2Btn">Выполнить поворот</button>
+
+        <!-- Stepper Motor Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-cog mr-2 text-blue-500"></i> Управление шаговым двигателем
+            </h2>
+            
+            <div class="stepper-controls flex flex-col items-center">
+                <div class="step-size mb-6 w-full max-w-xs">
+                    <label for="stepperDegrees" class="block text-sm font-medium text-gray-700 mb-2">Шаг поворота (градусы):</label>
+                    <div class="relative">
+                        <input type="number" id="stepperDegrees" min="1" max="45" value="10" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-3 pr-10 py-2">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <span class="text-gray-500">°</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arrow-control flex gap-6 mb-6">
+                    <button id="arrowLeft" class="arrow-btn w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl hover:bg-blue-700">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button id="arrowRight" class="arrow-btn w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl hover:bg-blue-700">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <button id="stopStepperBtn" class="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center">
+                        <i class="fas fa-stop-circle mr-2"></i> СТОП
+                    </button>
+                </div>
+                
+                <div class="text-sm text-gray-500 mt-2 flex items-center">
+                    <i class="fas fa-info-circle mr-2"></i> Используйте клавиши ← → или пробел для остановки
+                </div>
             </div>
         </div>
     </div>
-
 
     <script>
         window.addEventListener('beforeunload', function(e) {
-            // Отправляем AJAX-запрос для выхода
             fetch('logout.php', {
                 method: 'POST',
-                credentials: 'same-origin' // Для передачи куков сессии
+                credentials: 'same-origin'
             });
         });
 
         // MQTT settings
         const brokerUrl = 'wss://d1ec323fd6904363bc62ae1f22132549.s1.eu.hivemq.cloud:8884/mqtt';
-        const servoTopic = 'servo/control';
-        const stepper1Topic = 'stepper1/control';
-        const stepper2Topic = 'stepper2/control';
+        const servoTopic1 = 'servo/control';
+        const servoTopic2 = 'servo2/control';
+        const servoTopic3 = 'servo3/control';
+        const stepperTopic = 'stepper1/control';
         
         let client = null;
         let isConnected = false;
+        let isRecording = false;
+        let isPlaying = false;
+        let playbackInterval = null;
+        let currentPlaybackCount = 0;
+        let totalPlaybackCount = 1;
+        
+        let recordingData = {
+            type: 'full',
+            axes: {
+                servo1: true,
+                servo2: true,
+                servo3: true,
+                stepper: true
+            },
+            positions: {
+                servo1: [],
+                servo2: [],
+                servo3: [],
+                stepper: []
+            },
+            actions: []
+        };
 
         // DOM elements
         const connectBtn = document.getElementById('connectBtn');
@@ -141,24 +473,52 @@
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const messagesDiv = document.getElementById('messages');
-        const servoSlider = document.getElementById('servoSlider');
-        const servoValue = document.getElementById('servoValue');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const startRecordingBtn = document.getElementById('startRecordingBtn');
+        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
+        const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+        const openTemplateBtn = document.getElementById('openTemplateBtn');
+        const fileInput = document.getElementById('fileInput');
+        const recordFull = document.getElementById('recordFull');
+        const recordPositions = document.getElementById('recordPositions');
+        const recordServo1 = document.getElementById('recordServo1');
+        const recordServo2 = document.getElementById('recordServo2');
+        const recordServo3 = document.getElementById('recordServo3');
+        const recordStepper = document.getElementById('recordStepper');
         
-        // Stepper 1 elements
-        const stepper1Degrees = document.getElementById('stepper1Degrees');
-        const stepper1CwBtn = document.getElementById('stepper1CwBtn');
-        const stepper1CcwBtn = document.getElementById('stepper1CcwBtn');
-        const moveStepper1Btn = document.getElementById('moveStepper1Btn');
-        
-        // Stepper 2 elements
-        const stepper2Degrees = document.getElementById('stepper2Degrees');
-        const stepper2CwBtn = document.getElementById('stepper2CwBtn');
-        const stepper2CcwBtn = document.getElementById('stepper2CcwBtn');
-        const moveStepper2Btn = document.getElementById('moveStepper2Btn');
+        // Playback elements
+        const playTemplateBtn = document.getElementById('playTemplateBtn');
+        const stopPlaybackBtn = document.getElementById('stopPlaybackBtn');
+        const playbackCount = document.getElementById('playbackCount');
+        const playbackStatus = document.getElementById('playbackStatus');
+        const currentPlaybackInfo = document.getElementById('currentPlaybackInfo');
+        const templateInfo = document.getElementById('templateInfo');
+        const templateType = document.getElementById('templateType');
+        const templateDate = document.getElementById('templateDate');
+        const templateServo1 = document.getElementById('templateServo1');
+        const templateServo2 = document.getElementById('templateServo2');
+        const templateServo3 = document.getElementById('templateServo3');
+        const templateStepper = document.getElementById('templateStepper');
 
-        // Direction flags
-        let stepper1Direction = 1;
-        let stepper2Direction = 1;
+        // Servo elements
+        const servo1Slider = document.getElementById('servo1Slider');
+        const servo1Value = document.getElementById('servo1Value');
+        const servo2Slider = document.getElementById('servo2Slider');
+        const servo2Value = document.getElementById('servo2Value');
+        const servo3Slider = document.getElementById('servo3Slider');
+        const servo3Value = document.getElementById('servo3Value');
+
+        // Stepper elements
+        const stepperDegrees = document.getElementById('stepperDegrees');
+        const arrowLeft = document.getElementById('arrowLeft');
+        const arrowRight = document.getElementById('arrowRight');
+        const stopStepperBtn = document.getElementById('stopStepperBtn');
+
+        // Modal elements
+        const saveModal = document.getElementById('saveModal');
+        const templateNameInput = document.getElementById('templateName');
+        const cancelSaveBtn = document.getElementById('cancelSaveBtn');
+        const confirmSaveBtn = document.getElementById('confirmSaveBtn');
 
         // Connect to broker
         connectBtn.addEventListener('click', () => {
@@ -167,35 +527,46 @@
                 password: passwordInput.value,
                 rejectUnauthorized: false
             };
-
+            
             client = mqtt.connect(brokerUrl, options);
-
+            
             client.on('connect', () => {
-                logMessage('Подключение к HiveMQ cloud');
+                logMessage('Подключение к HiveMQ cloud', 'success');
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
                 isConnected = true;
                 
-                // Подписываемся на фиксированные топики
-                client.subscribe(servoTopic);
-                client.subscribe(stepper1Topic);
-                client.subscribe(stepper2Topic);
-                logMessage(`Подписка на темы: ${servoTopic}, ${stepper1Topic}, ${stepper2Topic}`);
+                client.subscribe(servoTopic1);
+                client.subscribe(servoTopic2);
+                client.subscribe(servoTopic3);
+                client.subscribe(stepperTopic);
+                logMessage(`Подписка на темы: ${servoTopic1}, ${servoTopic2}, ${servoTopic3}, ${stepperTopic}`, 'info');
             });
-
+            
             client.on('error', (err) => {
-                logMessage(`Ошибка подключения: ${err}`);
+                logMessage(`Ошибка подключения: ${err}`, 'error');
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 isConnected = false;
             });
-
+            
             client.on('message', (topic, message) => {
-                logMessage(`Отправлено сообщение на ${topic}: ${message.toString()}`);
+                logMessage(`Получено сообщение на ${topic}: ${message.toString()}`, 'message');
+                
+                // Record incoming messages if recording is active
+                if (isRecording) {
+                    const action = {
+                        type: 'incoming',
+                        topic: topic,
+                        message: message.toString(),
+                        timestamp: new Date().toISOString()
+                    };
+                    recordingData.actions.push(action);
+                }
             });
-
+            
             client.on('close', () => {
-                logMessage('Подключение закрыто');
+                logMessage('Подключение закрыто', 'warning');
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 isConnected = false;
@@ -210,61 +581,548 @@
             }
         });
 
-        // Servo control
-        servoSlider.addEventListener('input', () => {
-            const value = servoSlider.value;
-            servoValue.textContent = `${value}°`;
+        // Servo 1 control
+        servo1Slider.addEventListener('input', () => {
+            const value = servo1Slider.value;
+            servo1Value.textContent = `${value}°`;
             
             if (isConnected) {
-                client.publish(servoTopic, value);
-                logMessage(`Отправлена позиция сервопривода на ${servoTopic}: ${value}°`);
+                client.publish(servoTopic1, value);
+                logMessage(`Сервопривод 1: позиция ${value}° отправлена на ${servoTopic1}`, 'command');
+                
+                // Record servo position if recording is active
+                if (isRecording && recordingData.axes.servo1) {
+                    if (recordingData.type === 'positions') {
+                        recordingData.positions.servo1.push({
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        });
+                    } else {
+                        const action = {
+                            type: 'servo1',
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        };
+                        recordingData.actions.push(action);
+                    }
+                }
             }
         });
 
-        // Stepper 1 control
-        stepper1CwBtn.addEventListener('click', () => {
-            stepper1Direction = 1;
-            logMessage("Мотор 1: установлен поворот по часовой стрелке");
-        });
-        
-        stepper1CcwBtn.addEventListener('click', () => {
-            stepper1Direction = 0;
-            logMessage("Мотор 1: установлен поворот против часовой стрелки");
-        });
-        
-        moveStepper1Btn.addEventListener('click', () => {
-            const degrees = stepper1Degrees.value;
+        // Servo 2 control
+        servo2Slider.addEventListener('input', () => {
+            const value = servo2Slider.value;
+            servo2Value.textContent = `${value}°`;
+            
             if (isConnected) {
-                const message = `de${degrees}di${stepper1Direction}`;
-                client.publish(stepper1Topic, message);
-                logMessage(`Мотор 1: Отправлена команда ${stepper1Topic} - ${degrees}° ${stepper1Direction ? 'CW' : 'CCW'}`);
+                client.publish(servoTopic2, value);
+                logMessage(`Сервопривод 2: позиция ${value}° отправлена на ${servoTopic2}`, 'command');
+                
+                // Record servo position if recording is active
+                if (isRecording && recordingData.axes.servo2) {
+                    if (recordingData.type === 'positions') {
+                        recordingData.positions.servo2.push({
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        });
+                    } else {
+                        const action = {
+                            type: 'servo2',
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        };
+                        recordingData.actions.push(action);
+                    }
+                }
             }
         });
 
-        // Stepper 2 control
-        stepper2CwBtn.addEventListener('click', () => {
-            stepper2Direction = 1;
-            logMessage("Мотор 2: установлен поворот по часовой стрелке");
-        });
-        
-        stepper2CcwBtn.addEventListener('click', () => {
-            stepper2Direction = 0;
-            logMessage("Мотор 2: установлен поворот против часовой стрелки");
-        });
-        
-        moveStepper2Btn.addEventListener('click', () => {
-            const degrees = stepper2Degrees.value;
+        // Servo 3 control
+        servo3Slider.addEventListener('input', () => {
+            const value = servo3Slider.value;
+            servo3Value.textContent = `${value}°`;
+            
             if (isConnected) {
-                const message = `de${degrees}di${stepper2Direction}`;
-                client.publish(stepper2Topic, message);
-                logMessage(`Мотор 2: Отправлена команда ${stepper2Topic} - ${degrees}° ${stepper2Direction ? 'CW' : 'CCW'}`);
+                client.publish(servoTopic3, value);
+                logMessage(`Сервопривод 3: позиция ${value}° отправлена на ${servoTopic3}`, 'command');
+                
+                // Record servo position if recording is active
+                if (isRecording && recordingData.axes.servo3) {
+                    if (recordingData.type === 'positions') {
+                        recordingData.positions.servo3.push({
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        });
+                    } else {
+                        const action = {
+                            type: 'servo3',
+                            value: value,
+                            timestamp: new Date().toISOString()
+                        };
+                        recordingData.actions.push(action);
+                    }
+                }
             }
         });
 
-        // Helper function to log messages
-        function logMessage(message) {
+        // Stepper control with arrows
+        function sendStepperCommand(direction) {
+            if (!isConnected) return;
+            
+            const degrees = stepperDegrees.value;
+            let command = '';
+            
+            switch(direction) {
+                case 'left':
+                    command = `de${degrees}dicw`;
+                    logMessage(`Шаговый двигатель: влево на ${degrees}°`, 'command');
+                    break;
+                case 'right':
+                    command = `de${degrees}diccw`;
+                    logMessage(`Шаговый двигатель: вправо на ${degrees}°`, 'command');
+                    break;
+                case 'stop':
+                    command = 'stop';
+                    logMessage('Шаговый двигатель: команда СТОП', 'command');
+                    break;
+            }
+            
+            client.publish(stepperTopic, command);
+            
+            // Record stepper command if recording is active
+            if (isRecording && recordingData.axes.stepper) {
+                if (recordingData.type === 'positions') {
+                    // For positions mode, we might want to record the final position
+                    // This would require knowing the current position, which we don't track here
+                } else {
+                    const action = {
+                        type: 'stepper',
+                        direction: direction,
+                        degrees: degrees,
+                        command: command,
+                        timestamp: new Date().toISOString()
+                    };
+                    recordingData.actions.push(action);
+                }
+            }
+        }
+
+        arrowLeft.addEventListener('click', () => sendStepperCommand('left'));
+        arrowRight.addEventListener('click', () => sendStepperCommand('right'));
+        stopStepperBtn.addEventListener('click', () => sendStepperCommand('stop'));
+
+        // Keyboard control for stepper
+        document.addEventListener('keydown', (e) => {
+            if (!isConnected) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    sendStepperCommand('left');
+                    break;
+                case 'ArrowRight':
+                    sendStepperCommand('right');
+                    break;
+                case ' ':
+                    sendStepperCommand('stop');
+                    break;
+            }
+        });
+
+        // Clear log
+        clearLogBtn.addEventListener('click', () => {
+            messagesDiv.innerHTML = '';
+        });
+
+        // Start recording
+        startRecordingBtn.addEventListener('click', () => {
+            // Update recording settings
+            recordingData.type = document.querySelector('input[name="recordType"]:checked').value;
+            recordingData.axes = {
+                servo1: recordServo1.checked,
+                servo2: recordServo2.checked,
+                servo3: recordServo3.checked,
+                stepper: recordStepper.checked
+            };
+            
+            // Reset recording data
+            recordingData.positions = {
+                servo1: [],
+                servo2: [],
+                servo3: [],
+                stepper: []
+            };
+            recordingData.actions = [];
+            
+            // Record initial positions
+            if (recordingData.type === 'positions') {
+                if (recordingData.axes.servo1) {
+                    recordingData.positions.servo1.push({
+                        value: servo1Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                if (recordingData.axes.servo2) {
+                    recordingData.positions.servo2.push({
+                        value: servo2Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                if (recordingData.axes.servo3) {
+                    recordingData.positions.servo3.push({
+                        value: servo3Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+            
+            isRecording = true;
+            startRecordingBtn.classList.add('hidden');
+            stopRecordingBtn.classList.remove('hidden');
+            logMessage('Начата запись шаблона управления', 'success');
+        });
+
+        // Stop recording
+        stopRecordingBtn.addEventListener('click', () => {
+            isRecording = false;
+            startRecordingBtn.classList.remove('hidden');
+            stopRecordingBtn.classList.add('hidden');
+            
+            // Record final positions for positions mode
+            if (recordingData.type === 'positions') {
+                if (recordingData.axes.servo1) {
+                    recordingData.positions.servo1.push({
+                        value: servo1Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                if (recordingData.axes.servo2) {
+                    recordingData.positions.servo2.push({
+                        value: servo2Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                if (recordingData.axes.servo3) {
+                    recordingData.positions.servo3.push({
+                        value: servo3Slider.value,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+            
+            logMessage('Запись шаблона завершена', 'success');
+            logMessage(`Тип записи: ${recordingData.type === 'full' ? 'Полная запись' : 'Только позиции'}`, 'info');
+            
+            // Enable playback button if we have data
+            if ((recordingData.type === 'full' && recordingData.actions.length > 0) || 
+                (recordingData.type === 'positions' && 
+                 (recordingData.positions.servo1.length > 0 || 
+                  recordingData.positions.servo2.length > 0 || 
+                  recordingData.positions.servo3.length > 0))) {
+                playTemplateBtn.disabled = false;
+            }
+            
+            // Log recorded data for debugging
+            console.log('Recorded data:', recordingData);
+        });
+
+        // Save template button click handler
+        saveTemplateBtn.addEventListener('click', () => {
+            if (isRecording) {
+                logMessage('Пожалуйста, остановите запись перед сохранением шаблона', 'warning');
+                return;
+            }
+            
+            if ((recordingData.type === 'full' && recordingData.actions.length === 0) || 
+                (recordingData.type === 'positions' && 
+                 recordingData.positions.servo1.length === 0 && 
+                 recordingData.positions.servo2.length === 0 && 
+                 recordingData.positions.servo3.length === 0)) {
+                logMessage('Нет данных для сохранения', 'warning');
+                return;
+            }
+            
+            // Show save modal
+            saveModal.style.display = 'flex';
+            templateNameInput.value = `template_${new Date().toISOString().slice(0, 10)}.json`;
+            templateNameInput.focus();
+        });
+
+        // Cancel save button
+        cancelSaveBtn.addEventListener('click', () => {
+            saveModal.style.display = 'none';
+        });
+
+        // Confirm save button
+        confirmSaveBtn.addEventListener('click', () => {
+            const fileName = templateNameInput.value.trim();
+            if (!fileName) {
+                alert('Пожалуйста, введите имя файла');
+                return;
+            }
+            
+            // Add metadata to the recording data
+            recordingData.metadata = {
+                created: new Date().toISOString(),
+                version: '1.0',
+                description: 'Шаблон управления сервоприводами и шаговым двигателем'
+            };
+            
+            // Convert data to JSON and create download link
+            const jsonData = JSON.stringify(recordingData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            logMessage(`Шаблон "${a.download}" успешно сохранен`, 'success');
+            saveModal.style.display = 'none';
+        });
+
+        // Open template button click handler
+        openTemplateBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    
+                    // Validate the template structure
+                    if (!data.type || !data.axes || !data.positions || !data.actions) {
+                        throw new Error('Некорректный формат шаблона');
+                    }
+                    
+                    // Load the template data
+                    recordingData = data;
+                    
+                    // Update UI based on loaded template
+                    document.querySelector(`input[name="recordType"][value="${data.type}"]`).checked = true;
+                    recordServo1.checked = data.axes.servo1;
+                    recordServo2.checked = data.axes.servo2;
+                    recordServo3.checked = data.axes.servo3;
+                    recordStepper.checked = data.axes.stepper;
+                    
+                    // Show template info
+                    templateType.textContent = data.type === 'full' ? 'Полная запись' : 'Только позиции';
+                    templateDate.textContent = data.metadata?.created ? new Date(data.metadata.created).toLocaleString() : 'Неизвестно';
+                    templateServo1.textContent = data.axes.servo1 ? 'Да' : 'Нет';
+                    templateServo2.textContent = data.axes.servo2 ? 'Да' : 'Нет';
+                    templateServo3.textContent = data.axes.servo3 ? 'Да' : 'Нет';
+                    templateStepper.textContent = data.axes.stepper ? 'Да' : 'Нет';
+                    
+                    templateInfo.classList.remove('hidden');
+                    
+                    // Enable playback button if we have data
+                    if ((data.type === 'full' && data.actions.length > 0) || 
+                        (data.type === 'positions' && 
+                         (data.positions.servo1.length > 0 || 
+                          data.positions.servo2.length > 0 || 
+                          data.positions.servo3.length > 0))) {
+                        playTemplateBtn.disabled = false;
+                    }
+                    
+                    logMessage(`Шаблон "${file.name}" успешно загружен`, 'success');
+                } catch (error) {
+                    logMessage(`Ошибка загрузки шаблона: ${error.message}`, 'error');
+                    console.error('Error loading template:', error);
+                }
+            };
+            reader.onerror = () => {
+                logMessage('Ошибка чтения файла', 'error');
+            };
+            reader.readAsText(file);
+        });
+
+        playTemplateBtn.addEventListener('click', async () => {
+    if (!isConnected) {
+        logMessage('Необходимо подключиться к MQTT брокеру', 'error');
+        return;
+    }
+    
+    totalPlaybackCount = parseInt(playbackCount.value) || 1;
+    currentPlaybackCount = 0;
+    
+    if (totalPlaybackCount === 0) {
+        logMessage('Начато бесконечное воспроизведение шаблона', 'success');
+    } else {
+        logMessage(`Начато воспроизведение шаблона (${totalPlaybackCount} повторений)`, 'success');
+    }
+    
+    isPlaying = true;
+    playTemplateBtn.classList.add('hidden');
+    stopPlaybackBtn.classList.remove('hidden');
+    playbackStatus.classList.remove('hidden');
+    
+    // Запускаем воспроизведение
+    await playbackTemplate();
+});
+
+async function playbackTemplate() {
+    if (!isPlaying) return;
+    
+    // Update playback status
+    if (totalPlaybackCount === 0) {
+        currentPlaybackInfo.textContent = `Воспроизведение: ${currentPlaybackCount + 1} (бесконечно)`;
+    } else {
+        currentPlaybackInfo.textContent = `Воспроизведение: ${currentPlaybackCount + 1}/${totalPlaybackCount}`;
+    }
+    
+    try {
+        // Playback logic based on recording type
+        if (recordingData.type === 'full') {
+            if (recordingData.actions.length === 0) return;
+            
+            const firstTimestamp = new Date(recordingData.actions[0].timestamp).getTime();
+            let lastTime = firstTimestamp;
+            
+            for (const action of recordingData.actions) {
+                if (!isPlaying) break; // Прервать если воспроизведение остановлено
+                
+                const actionTime = new Date(action.timestamp).getTime();
+                const delay = actionTime - lastTime;
+                lastTime = actionTime;
+                
+                // Ждем нужное время перед выполнением действия
+                await new Promise(resolve => setTimeout(resolve, delay));
+                
+                if (!isPlaying) break; // Дополнительная проверка после ожидания
+                
+                if (action.type === 'servo1' && isConnected) {
+                    client.publish(servoTopic1, action.value.toString());
+                    servo1Slider.value = action.value;
+                    servo1Value.textContent = `${action.value}°`;
+                } else if (action.type === 'servo2' && isConnected) {
+                    client.publish(servoTopic2, action.value.toString());
+                    servo2Slider.value = action.value;
+                    servo2Value.textContent = `${action.value}°`;
+                } else if (action.type === 'servo3' && isConnected) {
+                    client.publish(servoTopic3, action.value.toString());
+                    servo3Slider.value = action.value;
+                    servo3Value.textContent = `${action.value}°`;
+                } else if (action.type === 'stepper' && isConnected) {
+                    client.publish(stepperTopic, action.command);
+                } else if (action.type === 'incoming') {
+                    logMessage(`[Playback] Получено сообщение на ${action.topic}: ${action.message}`, 'message');
+                }
+            }
+        } else {
+            // Positions mode - move from initial to final position
+            if (recordingData.axes.servo1 && recordingData.positions.servo1.length >= 2) {
+                const final = recordingData.positions.servo1[recordingData.positions.servo1.length - 1].value;
+                if (isConnected) {
+                    client.publish(servoTopic1, final.toString());
+                    servo1Slider.value = final;
+                    servo1Value.textContent = `${final}°`;
+                }
+            }
+            
+            if (recordingData.axes.servo2 && recordingData.positions.servo2.length >= 2) {
+                const final = recordingData.positions.servo2[recordingData.positions.servo2.length - 1].value;
+                if (isConnected) {
+                    client.publish(servoTopic2, final.toString());
+                    servo2Slider.value = final;
+                    servo2Value.textContent = `${final}°`;
+                }
+            }
+            
+            if (recordingData.axes.servo3 && recordingData.positions.servo3.length >= 2) {
+                const final = recordingData.positions.servo3[recordingData.positions.servo3.length - 1].value;
+                if (isConnected) {
+                    client.publish(servoTopic3, final.toString());
+                    servo3Slider.value = final;
+                    servo3Value.textContent = `${final}°`;
+                }
+            }
+        }
+        
+        currentPlaybackCount++;
+        
+        // Проверяем, нужно ли продолжать воспроизведение
+        if (isPlaying) {
+            if (totalPlaybackCount === 0) {
+                // Бесконечное воспроизведение
+                await playbackTemplate();
+            } else if (currentPlaybackCount < totalPlaybackCount) {
+                // Есть еще повторения
+                await playbackTemplate();
+            } else {
+                // Воспроизведение завершено
+                stopPlayback();
+                logMessage('Воспроизведение шаблона завершено', 'success');
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка при воспроизведении:', error);
+        stopPlayback();
+        logMessage(`Ошибка при воспроизведении: ${error.message}`, 'error');
+    }
+}
+
+function stopPlayback() {
+    isPlaying = false;
+    currentPlaybackCount = 0;
+    
+    playTemplateBtn.classList.remove('hidden');
+    stopPlaybackBtn.classList.add('hidden');
+    playbackStatus.classList.add('hidden');
+    
+    logMessage('Воспроизведение шаблона остановлено', 'warning');
+}
+
+        
+
+        // Helper function to log messages with different types
+        function logMessage(message, type = 'info') {
             const messageElement = document.createElement('div');
-            messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let icon = '';
+            let color = '';
+            
+            switch(type) {
+                case 'success':
+                    icon = '<i class="fas fa-check-circle mr-2 text-green-500"></i>';
+                    color = 'text-green-600';
+                    break;
+                case 'error':
+                    icon = '<i class="fas fa-times-circle mr-2 text-red-500"></i>';
+                    color = 'text-red-600';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle mr-2 text-yellow-500"></i>';
+                    color = 'text-yellow-600';
+                    break;
+                case 'command':
+                    icon = '<i class="fas fa-terminal mr-2 text-blue-500"></i>';
+                    color = 'text-blue-600';
+                    break;
+                case 'message':
+                    icon = '<i class="fas fa-comment-alt mr-2 text-gray-500"></i>';
+                    color = 'text-gray-600';
+                    break;
+                default:
+                    icon = '<i class="fas fa-info-circle mr-2 text-blue-500"></i>';
+                    color = 'text-blue-600';
+            }
+            
+            messageElement.innerHTML = `
+                <span class="text-gray-400">[${timestamp}]</span>
+                ${icon}
+                <span class="${color}">${message}</span>
+            `;
+            
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
