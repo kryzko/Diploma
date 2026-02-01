@@ -6,7 +6,7 @@ var client = new Paho.Client("c331dfc8368c4832b294451e6869daee.s1.eu.hivemq.clou
 
 // Connect the client, providing an onConnect callback
 client.connect({
-  userName: "krushka",  // Replace with your HiveMQ credentials
+  userName: "krushka",  
   password: "Kr5st9k2006",
   onSuccess: () => console.log("Connected"),
   onFailure: (err) => console.log("Connection failed", err),
